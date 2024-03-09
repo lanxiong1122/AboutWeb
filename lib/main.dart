@@ -41,8 +41,8 @@ class _WebViewPageState extends State<WebViewPage>
 ''';
   bool _webViewIntialized = false;
   TextEditingController _urlController =
+      //TextEditingController(text: 'https://lanxiong1122.github.io/testck.html');
       TextEditingController(text: 'https://www.jd.com');
-
   @override
   void initState() {
     super.initState();
@@ -50,19 +50,19 @@ class _WebViewPageState extends State<WebViewPage>
     _controller = Completer<WebViewController>();
 
     _getCookies = () async {
-      if (_webViewController != null &&
-          _controller.isCompleted &&
-          _webViewController != await _controller.future) {
-        // 等待WebViewController赋值完成后再执行获取Cookie的操作
-        await Future.delayed(Duration.zero);
-        _getCookies();
-      } else if (_webViewController != null && _controller.isCompleted) {
+      if (_webViewController != null && _controller.isCompleted) {
         final controller = await _controller.future;
-        final String cookieValue =
-            await controller.evaluateJavascript('document.cookie');
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Received cookies: $cookieValue')));
-        debugPrint('Received cookies: $cookieValue');
+        if (controller == _webViewController) {
+          final String cookieValue =
+              await controller.evaluateJavascript('document.cookie');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Received cookies: $cookieValue')),
+          );
+          debugPrint('Received cookies: $cookieValue');
+        } else {
+          debugPrint(
+              "Unexpected condition: _webViewController and the future's result don't match.");
+        }
       } else {
         debugPrint("WebViewController not ready yet.");
       }
@@ -142,6 +142,7 @@ class _WebViewPageState extends State<WebViewPage>
                 if (!_webViewIntialized) {
                   _webViewIntialized = true;
                   _controller.complete(webViewController);
+                  _getCookies();
                 }
               },
               onPageFinished: (String url) async {
@@ -235,18 +236,16 @@ class _WebViewPageState extends State<WebViewPage>
     );
   }
 
-  void _loadNewUrl(String newUrl) {
-    if (_webViewController == null || !_controller.isCompleted) {
-      debugPrint("WebView is either destroyed or hasn't been initialized yet.");
+  _loadNewUrl(String newUrl) async {
+    if (_webViewController == null) {
+      debugPrint("WebView is not initialized yet.");
       return;
     }
 
     if (Uri.parse(newUrl).isAbsolute && Uri.parse(newUrl).scheme != '') {
       _urlController.text = newUrl;
-      if (_controller.isCompleted) {
-        final controller = _controller.future;
-        controller.then((value) => value.loadUrl(newUrl));
-      }
+      await _webViewController
+          .loadUrl(newUrl); // 直接使用_webViewController而非_future
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('请输入有效的网址')),
