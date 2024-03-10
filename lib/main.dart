@@ -50,19 +50,15 @@ class _WebViewPageState extends State<WebViewPage>
     _controller = Completer<WebViewController>();
 
     _getCookies = () async {
-      if (_webViewController != null && _controller.isCompleted) {
-        final controller = await _controller.future;
-        if (controller == _webViewController) {
-          final String cookieValue =
-              await controller.evaluateJavascript('document.cookie');
+      if (_webViewController != null) {
+        _webViewController
+            .evaluateJavascript('document.cookie')
+            .then((cookieValue) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Received cookies: $cookieValue')),
           );
           debugPrint('Received cookies: $cookieValue');
-        } else {
-          debugPrint(
-              "Unexpected condition: _webViewController and the future's result don't match.");
-        }
+        });
       } else {
         debugPrint("WebViewController not ready yet.");
       }
